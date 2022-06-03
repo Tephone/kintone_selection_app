@@ -1,65 +1,16 @@
-// (function () {
-//     'use script'
-//
-//     function createPutRecords(records) {
-//         const putRecords = records.map(record => {
-//             if(!record.コピー先.value) {
-//                 return  {
-//                     id: record.$id.value,
-//                     record: {
-//                         コピー先: {
-//                             value: record.コピー元.value
-//                         }
-//                     }
-//                 }
-//             }
-//         })
-//         return putRecords.filter(putRecord => putRecord !== undefined)
-//     }
-//
-//     kintone.events.on('app.record.index.show', function (event) {
-//         const massUpdateButton = document.createElement('button')
-//         massUpdateButton.id = 'mass_update_button'
-//         massUpdateButton.innerText = '一括更新する'
-//         const updatedAppId = kintone.app.getId()
-//
-//         if (document.getElementById('mass_update_button') !== null) {
-//             return
-//         }
-//
-//         massUpdateButton.onclick = async function () {
-//             const paramGet = {
-//                 'app': updatedAppId,
-//                 'query': kintone.app.getQuery()
-//             }
-//
-//             const reps = await kintone.api(kintone.api.url('/k/v1/records', true), 'GET', paramGet)
-//             const records = reps.records
-//             const paramPut = {
-//                 'app': updatedAppId,
-//                 'records': createPutRecords(records)
-//             }
-//
-//             await kintone.api(kintone.api.url('/k/v1/records', true), 'PUT', paramPut)
-//             location.reload()
-//         }
-//         kintone.app.getHeaderMenuSpaceElement().appendChild(massUpdateButton)
-//     })
-// })()
-
-
 (function () {
     'use script'
 
     function createPutRecords(records) {
         const putRecords = records.map(record => {
-            if(!record.コピー先.value) {
-                return  {
-                    id: record.$id.value,
-                    record: {
-                        コピー先: {
-                            value: record.コピー元.value
-                        }
+            if (record.コピー元.value === record.コピー先.value) {
+                return undefined
+            }
+            return  {
+                id: record.$id.value,
+                record: {
+                    コピー先: {
+                        value: record.コピー元.value
                     }
                 }
             }
@@ -103,15 +54,16 @@
                 recordsacquired = recordsacquired.concat(reps.records)
             }
             const recordsByOneHundred = await sliceByNumber(recordsacquired, 100)
-
-            recordsByOneHundred.forEach(records => {
+            const promises = recordsByOneHundred.map(records => {
                 const paramPut = {
                     'app': updatedAppId,
                     'records': createPutRecords(records)
                 }
-                kintone.api(kintone.api.url('/k/v1/records', true), 'PUT', paramPut)
+                return kintone.api(kintone.api.url('/k/v1/records', true), 'PUT', paramPut)
             })
-            // location.reload()
+            await Promise.all(promises)
+
+            location.reload()
         }
         kintone.app.getHeaderMenuSpaceElement().appendChild(massUpdateButton)
     })
